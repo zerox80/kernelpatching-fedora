@@ -66,6 +66,19 @@ class BootDefaultTests(unittest.TestCase):
         self.assertEqual(self.current, PREVIOUS)
         self.assertIn(f"--set-default={TARGET}", self.output.getvalue())
 
+    def test_tuned_initrd_is_supported_for_target_and_previous_default(self):
+        def read(command):
+            if command == ["sudo", "--", "grub2-editenv", "/boot/grub2/grubenv", "list"]:
+                return Mock(stdout="tuned_initrd=\n")
+            result = self.read_grubby(command)
+            if command[-1].startswith("--info="):
+                result.stdout = result.stdout.replace('.img"', '.img $tuned_initrd"')
+            return result
+        self.run.side_effect = read
+        self.execute()
+        self.assertEqual(self.current, TARGET)
+        self.privileged.assert_called_once_with(["grubby", f"--set-default={TARGET}"])
+
     def test_already_default_is_a_noop(self):
         self.execute(release=OFFICIAL)
         self.privileged.assert_not_called()
@@ -173,9 +186,69 @@ class BootEntryTests(unittest.TestCase):
         self.enterContext(patch.object(Path, "is_file", return_value=True))
         self.stat = self.enterContext(patch.object(Path, "stat", return_value=Mock(st_size=100)))
 
-    def validate(self, output):
-        with patch.object(boot_default, "run", return_value=Mock(stdout=output)):
+    def validate(self, output, grubenv=""):
+        def read(command):
+            if command == ["sudo", "--", "grubby", f"--info={TARGET}"]:
+                return Mock(stdout=output)
+            self.assertEqual(command, ["sudo", "--", "grub2-editenv", "/boot/grub2/grubenv", "list"])
+            if isinstance(grubenv, Error):
+                raise grubenv
+            return Mock(stdout=grubenv)
+        with patch.object(boot_default, "run", side_effect=read) as run:
             boot_default.validate_boot_entry(Path(TARGET))
+        return run
+
+    def test_literal_initrds_do_not_require_reading_grub_environment(self):
+        run = self.validate(boot_info(TARGET))
+        run.assert_called_once_with(["sudo", "--", "grubby", f"--info={TARGET}"])
+
+    def test_unset_and_empty_tuned_initrd_are_optional(self):
+        for token in ("$tuned_initrd", "${tuned_initrd}"):
+            for grubenv in ("saved_entry=test\n", "tuned_initrd=\nsaved_entry=test\n"):
+                with self.subTest(token=token, grubenv=grubenv):
+                    output = boot_info(TARGET).replace('.img"', f'.img {token}"')
+                    self.validate(output, grubenv)
+
+    def test_tuned_initrd_overlays_are_resolved_and_checked(self):
+        output = boot_info(TARGET).replace('.img"', '.img $tuned_initrd"')
+        expected = [TARGET, f"/boot/initramfs-{CUSTOM}.img", "/boot/tuned.img", "/boot/extra.img"]
+        checked = []
+        def is_file(path):
+            checked.append(str(path))
+            return str(path) in expected
+        with patch.object(Path, "is_file", is_file):
+            self.validate(output, "tuned_params=ignored\ntuned_initrd=/tuned.img /boot/extra.img\n")
+        self.assertEqual(checked, expected)
+
+    def test_missing_or_empty_tuned_overlay_is_rejected(self):
+        output = boot_info(TARGET).replace('.img"', '.img $tuned_initrd"')
+        for missing in (True, False):
+            with self.subTest(missing=missing), \
+                    patch.object(Path, "is_file", lambda path: not missing or path.name != "tuned.img"), \
+                    patch.object(Path, "stat", lambda path: Mock(st_size=0 if path.name == "tuned.img" else 100)):
+                with self.assertRaisesRegex(Error, "initramfs file is missing or empty"):
+                    self.validate(output, "tuned_initrd=/tuned.img\n")
+
+    def test_tuned_initrd_cannot_replace_the_matching_kernel_initramfs(self):
+        output = boot_info(TARGET).replace(f"/boot/initramfs-{CUSTOM}.img", "$tuned_initrd")
+        for grubenv in ("tuned_initrd=\n", "tuned_initrd=/tuned.img\n"):
+            with self.subTest(grubenv=grubenv), self.assertRaisesRegex(Error, "matching initramfs"):
+                self.validate(output, grubenv)
+
+    def test_invalid_tuned_environment_is_rejected(self):
+        output = boot_info(TARGET).replace('.img"', '.img $tuned_initrd"')
+        for grubenv in ("tuned_initrd=/../etc/passwd\n", "tuned_initrd=relative.img\n",
+                        "tuned_initrd=$unknown\n", "tuned_initrd=/boot/$unknown\n",
+                        "tuned_initrd=/one.img\ntuned_initrd=/two.img\n", 'tuned_initrd="\n',
+                        Error("Cannot read GRUB environment")):
+            with self.subTest(grubenv=grubenv), self.assertRaises(Error):
+                self.validate(output, grubenv)
+
+    def test_unknown_grub_variables_are_rejected(self):
+        for token in ("$unknown", "${unknown}", "$tuned_initrd_suffix", "/boot/$unknown"):
+            output = boot_info(TARGET).replace('.img"', f'.img {token}"')
+            with self.subTest(token=token), self.assertRaisesRegex(Error, "Unrecognized GRUB initramfs path"):
+                self.validate(output)
 
     def test_exact_image_and_matching_initramfs_are_required(self):
         good = boot_info(TARGET)

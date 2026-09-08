@@ -45,6 +45,8 @@ Run `python3 fedora_vanilla_kernel.py set-default` to choose an installed kernel
 
 The running kernel and current default are valid choices in this menu. Choosing the existing default makes no change. Before setting a new default, the application validates the selected installed kernel, its image and initramfs, and its GRUB entry. It uses `sudo grubby --set-default`, verifies the resulting default, and attempts to restore the previous default if the change fails.
 
+Fedora's optional `$tuned_initrd` (or `${tuned_initrd}`) entry is resolved from `/boot/grub2/grubenv` using `sudo grub2-editenv`. An unset or empty value adds no initramfs; any configured TuneD overlays must exist and be nonempty, just like the kernel's matching initramfs. An unreadable GRUB environment or an unsupported variable prevents the change.
+
 Custom-kernel selection requires disabled Secure Boot, as automatic EFI/MOK signing is not implemented. Official Fedora kernels remain selectable when Secure Boot is enabled. The underlying command is documented in the [Fedora GRUB wiki](https://fedoraproject.org/wiki/GRUB_2).
 
 Changing the default selects the kernel for a future boot. It does not reboot, change the currently running kernel, rebuild anything, or install/remove packages. A later Fedora kernel update or release upgrade may change the default again.

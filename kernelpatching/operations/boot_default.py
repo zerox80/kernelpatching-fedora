@@ -17,6 +17,25 @@ from kernelpatching.system.console import say
 from kernelpatching.system.process import privileged, run
 
 
+def resolve_tuned_initrds(names: list[str]) -> list[str]:
+    """Resolve TuneD's optional BLS overlay from the same environment as grubby."""
+    tokens = {"$tuned_initrd", "${tuned_initrd}"}
+    if not tokens.intersection(names):
+        return names
+    # TuneD adds this token even when no overlay is configured. Do not expand
+    # shell variables: GRUB's environment, not the process environment, owns it.
+    output = run(["sudo", "--", "grub2-editenv", "/boot/grub2/grubenv", "list"]).stdout
+    values = [line.partition("=")[2] for line in output.splitlines()
+              if line.partition("=")[0] == "tuned_initrd"]
+    if len(values) > 1:
+        raise Error("Unrecognized GRUB environment: duplicate tuned_initrd values.")
+    try:
+        overlays = shlex.split(values[0]) if values else []
+    except ValueError as error:
+        raise Error("Unrecognized GRUB tuned_initrd value.") from error
+    return [path for name in names for path in (overlays if name in tokens else [name])]
+
+
 def validate_boot_entry(image: Path) -> None:
     """Check the exact GRUB entry and each initramfs it references."""
     if image.parent != Path("/boot") or not image.name.startswith("vmlinuz-"):
@@ -39,9 +58,9 @@ def validate_boot_entry(image: Path) -> None:
     if len(entries) != 1:
         raise Error(f"No unique GRUB entry was found for {image}.")
     initrds = []
-    for name in shlex.split(entries[0].get("initrd", "")):
+    for name in resolve_tuned_initrds(shlex.split(entries[0].get("initrd", ""))):
         path = Path(name)
-        if not path.is_absolute() or ".." in path.parts:
+        if "$" in name or not path.is_absolute() or ".." in path.parts:
             raise Error(f"Unrecognized GRUB initramfs path: {name}")
         # Fedora's BLS grubby prefixes only the first initrd with /boot;
         # additional entries can still be relative to the boot filesystem root.
