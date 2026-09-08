@@ -2,7 +2,8 @@
 
 Run `python3 scripts/check.py` for syntax checks and the regression suite. The tests cover:
 
-- stable release selection and input validation;
+- stable release selection, explicit RC opt-in, and input validation;
+- RC build dispatch, provenance, and real signed-tag/archive verification with an isolated local Git/GPG fixture;
 - known, unknown, expired, revoked, and rotated signing keys;
 - archive traversal/link protections and download checks;
 - Fedora baseline provenance and snapshot tampering;
@@ -16,6 +17,8 @@ Run `python3 scripts/check.py` for syntax checks and the regression suite. The t
 - English CLI entry points and module imports.
 
 Mocked workflow tests do not install or remove packages, cancel offline updates, change the bootloader, or reboot. Future Fedora version tests validate the selection logic only; they are not full builds on those releases.
+
+The RC integration tests generate an ephemeral signing key and a tiny local repository. They verify signed tags and detached TAR signatures, and reject unsigned, lightweight, mismatched, tampered, or untrusted tags before archiving. They require Git and GPG, use no network, and do not modify the user's repositories or keyring.
 
 When testing `set-default`, mock the installed-kernel inventory, boot artifacts, and grubby commands. Exercise selection, cancellation, previews, an already-selected default, validation failures, and restoration after a failed change without writing to the host's boot configuration.
 

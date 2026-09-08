@@ -12,6 +12,10 @@ Run `deps --install` as a regular user. The command can bootstrap GPG without fi
 
 A new baseline needs an installed official `kernel-core` for the current Fedora release. An old Fedora configuration is not silently reused after an OS upgrade. Install or repair the appropriate official packages through your normal Fedora package management, then retry.
 
+## Release candidate rejected or fetch failed
+
+Use both options: `build --version 7.3-rc2 --allow-rc`. Run `deps --install` if Git is missing. The version must name an existing upstream mainline RC tag; a missing tag or interrupted fetch stops the build. Inspect `source.log` for fetch failures and `signature.log`/`signature.status` for verification failures. RC sources require a valid signed Git tag; no unsigned download fallback is used.
+
 ## Secure Boot enabled or unknown
 
 Building is allowed, but automatic installation is blocked. The generated EFI kernel image is not signed for your firmware trust chain. Custom EFI/MOK signing and disabling Secure Boot are outside this project's automation. Source PGP signatures and kernel-module signatures do not replace an EFI signature.

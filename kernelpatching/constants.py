@@ -24,13 +24,16 @@ RELEASE_KEYS = {
 BASE_PACKAGES = """gcc gcc-c++ make binutils bc bison flex openssl openssl-devel
 elfutils-devel elfutils-libelf-devel ncurses-devel dwarves perl python3 rsync
 rpm-build redhat-rpm-config zstd xz gzip tar cpio diffutils findutils patch
-gnupg2 fedora-gpg-keys gcc-plugin-devel""".split()
+gnupg2 fedora-gpg-keys gcc-plugin-devel git""".split()
 
 
 RUST_PACKAGES = "rust rust-src bindgen-cli clang clang-devel llvm-devel lld".split()
 
 
 VERSION_RE = re.compile(r"[1-9][0-9]*\.[0-9]+(?:\.[0-9]+)?\Z")
+
+
+RC_VERSION_RE = re.compile(r"[1-9][0-9]*\.[0-9]+-rc[1-9][0-9]*\Z")
 
 
 RELEASE_RE = re.compile(r"[0-9][A-Za-z0-9._+-]{1,100}\Z")

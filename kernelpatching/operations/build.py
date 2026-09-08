@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from kernelpatching.constants import GIB
 from kernelpatching.constants import RELEASE_KEYS
+from kernelpatching.constants import RC_VERSION_RE
 from kernelpatching.constants import SCRIPT_VERSION
 from kernelpatching.errors import Error
 from kernelpatching.kernel.baseline import choose_baseline
@@ -12,6 +13,7 @@ from kernelpatching.kernel.releases import validate_version
 from kernelpatching.kernel.sources import extract_sources
 from kernelpatching.packaging.rpms import build_packages
 from kernelpatching.security.signatures import verified_tarball
+from kernelpatching.security.git_sources import UPSTREAM_GIT_URL, verified_git_archive
 from kernelpatching.storage.files import sha256
 from kernelpatching.storage.files import write_json
 from kernelpatching.storage.manifests import build_target
@@ -33,6 +35,7 @@ import shutil
 
 
 def build(args, work: Path) -> None:
+    version = validate_version(args.version, allow_rc=args.allow_rc) if args.version else None
     # Kernel Makefiles and RPM macros do not support arbitrary path characters.
     if not re.fullmatch(r"/[A-Za-z0-9_./-]+", str(work)):
         raise Error("The build path may contain only ASCII letters, digits, /, dots, - and _.")
@@ -49,7 +52,8 @@ def build(args, work: Path) -> None:
                         + "\nRun the deps --install subcommand first.")
         if shutil.disk_usage(work).free < args.min_free_gib * GIB:
             raise Error(f"Less than {args.min_free_gib} GiB is available in the build directory.")
-        version = validate_version(args.version) if args.version else latest_version()
+        version = version or latest_version()
+        is_rc = bool(RC_VERSION_RE.fullmatch(version))
         timestamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d%H%M%S%f")
         directory = work / f"linux-{version}-{timestamp}"
         directory.mkdir(mode=0o700)
@@ -63,7 +67,10 @@ def build(args, work: Path) -> None:
         keys = RELEASE_KEYS | dict(args.release_key or [])
         manifest = {"schema": 2, "script_version": SCRIPT_VERSION, "target": build_target(),
                     "status": "started", "upstream_version": version,
-                    "upstream_source_url": f"https://cdn.kernel.org/pub/linux/kernel/v{version.split('.')[0]}.x/linux-{version}.tar.xz",
+                    "upstream_source_url": UPSTREAM_GIT_URL if is_rc else
+                        f"https://cdn.kernel.org/pub/linux/kernel/v{version.split('.')[0]}.x/linux-{version}.tar.xz",
+                    "release_candidate": is_rc,
+                    "source_verification": "signed-git-tag" if is_rc else "detached-tar-signature",
                     "fedora_source_patches_applied": False,
                     "trusted_release_keys": keys,
                     "baseline": dataclasses.asdict(base), "jobs": jobs,
@@ -72,7 +79,8 @@ def build(args, work: Path) -> None:
         (directory / "PROVENANCE.txt").write_text(
             f"Application version: {SCRIPT_VERSION}\nTarget: Fedora {fedora_version()} / {platform.machine()}\n"
             f"Kernel source: Linux {version}, kernel.org Upstream\n"
-            f"Download: {manifest['upstream_source_url']}\n"
+            f"Source: {manifest['upstream_source_url']}\n"
+            f"Source verification: {manifest['source_verification']}\n"
             f"Configuration baseline: {base.package}\n"
             f"Fedora source RPM for the configuration baseline: {base.source_rpm or 'not recorded in the legacy snapshot'}\n"
             f"Fedora configuration SHA256: {base.sha256}\n"
@@ -82,8 +90,17 @@ def build(args, work: Path) -> None:
             "Inspect the matching Fedora source RPM to identify its distribution patches.\n"
             "Configuration differences are in config.diff; RPM recipe changes are in packaging.diff.\n",
             encoding="utf-8")
-        archive, signer = verified_tarball(version, directory, keys)
+        if is_rc:
+            archive, signer, git_metadata = verified_git_archive(version, directory, keys)
+            manifest.update(git_metadata)
+            with (directory / "PROVENANCE.txt").open("a", encoding="utf-8") as provenance:
+                provenance.write(f"Verified Git tag: {git_metadata['upstream_git_tag']}\n"
+                                 f"Git tag object: {git_metadata['upstream_git_tag_object']}\n"
+                                 f"Git commit: {git_metadata['upstream_git_commit']}\n")
+        else:
+            archive, signer = verified_tarball(version, directory, keys)
         manifest.update({"signer": signer, "source_tar_sha256": sha256(archive)})
+        write_json(directory / "manifest.json", manifest)
         tree = extract_sources(archive, directory / "sources", version)
         release, make = configure(tree, directory, config, suffix, jobs)
         manifest.update({"kernel_release": release, "config_sha256": sha256(tree / ".config")})

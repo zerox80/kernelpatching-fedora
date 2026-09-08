@@ -25,8 +25,8 @@ def environment() -> dict[str, str]:
 
 
 
-def run(argv, *, cwd=None, check=True, timeout=120) -> subprocess.CompletedProcess:
-    result = subprocess.run([str(x) for x in argv], cwd=cwd, env=environment(),
+def run(argv, *, cwd=None, check=True, timeout=120, env=None) -> subprocess.CompletedProcess:
+    result = subprocess.run([str(x) for x in argv], cwd=cwd, env=environment() if env is None else env,
                             text=True, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, timeout=timeout)
     if check and result.returncode:
@@ -36,13 +36,13 @@ def run(argv, *, cwd=None, check=True, timeout=120) -> subprocess.CompletedProce
 
 
 
-def logged(argv, cwd: Path, logfile: Path) -> None:
+def logged(argv, cwd: Path, logfile: Path, *, env=None) -> None:
     """Stream large build output to disk without accumulating it in memory."""
     say(f"$ {shlex.join(map(str, argv))}\n  Log: {logfile}")
     with logfile.open("a", encoding="utf-8") as out:
         out.write("\n$ " + shlex.join(map(str, argv)) + "\n")
         out.flush()
-        proc = subprocess.Popen([str(x) for x in argv], cwd=cwd, env=environment(),
+        proc = subprocess.Popen([str(x) for x in argv], cwd=cwd, env=environment() if env is None else env,
                                 stdin=subprocess.DEVNULL, stdout=out,
                                 stderr=subprocess.STDOUT, start_new_session=True)
         try:

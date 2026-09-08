@@ -8,7 +8,9 @@ This relies on a trusted local Fedora installation and RPM database. It does not
 
 ## Upstream source verification
 
-Sources and detached signatures are downloaded over HTTPS. The developer signature is verified against the **uncompressed TAR**, as specified by [kernel.org's signature instructions](https://www.kernel.org/signature.html).
+For final releases, sources and detached signatures are downloaded over HTTPS. The developer signature is verified against the **uncompressed TAR**, as specified by [kernel.org's signature instructions](https://www.kernel.org/signature.html).
+
+Mainline release candidates use signed Git tags because [kernel.org no longer publishes separately signed RC tarballs](https://www.kernel.org/rc-tarballs-and-patches-starting-with-412-rc1.html). A fresh bare repository fetches only the requested tag and its tree over HTTPS from Torvalds's kernel.org repository. Git settings inherited from the caller are isolated. `git verify-tag --raw` must validate the pinned tag object against an explicitly trusted developer fingerprint; unsigned tags, lightweight tags, and signed tags naming a different release are rejected. A local TAR is then generated from the exact commit named in the signed tag and passed through the usual archive checks. No unsigned snapshot download is substituted.
 
 Release keys are refreshed through kernel.org WKD in an isolated temporary GPG directory. Only explicitly trusted full fingerprints are accepted. Invalid, expired, revoked, unknown, or weak-hash signatures are rejected. Your normal GPG keyring is not modified.
 
@@ -31,6 +33,7 @@ The RPM adapter changes package metadata and package names, not kernel source co
 | File | Contents |
 | --- | --- |
 | `PROVENANCE.txt` | Human-readable upstream version, Fedora baseline, source RPM, and patch policy |
+| `upstream.git`, `upstream-tag.txt`, `source.log` | RC builds: shallow source repository, signed tag contents, and fetch/archive log |
 | `manifest.json` | Target, source signer/hashes, configuration hash, package metadata and hashes |
 | `fedora-original.config` | Verified configuration snapshot used for this build |
 | `fedora-adapted.config` | Configuration after local settings are applied |

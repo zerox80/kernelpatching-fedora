@@ -27,6 +27,21 @@ Build paths must use ASCII letters, digits, slashes, dots, hyphens, and undersco
 
 Every build gets a new directory. `--prepare-only` also needs the build tools, but stops before compilation and packaging. Automatic resume is not implemented: a later build creates a new run. Ctrl+C stops a compiler build and its child processes while retaining files and logs.
 
+### Mainline release candidates
+
+Use an explicit version and opt in to prereleases:
+
+```bash
+python3 fedora_vanilla_kernel.py deps --install
+python3 fedora_vanilla_kernel.py build --version 7.3-rc2 --allow-rc
+```
+
+The version is an example; choose an existing upstream `MAJOR.MINOR-rcN` tag with a base version of 6.12 or newer. RC numbers start at 1. Arbitrary Git revisions, linux-next snapshots, and stable-review versions such as `7.2.4-rc1` are not supported. Without `--allow-rc`, an RC version is rejected with the required command. Without `--version`, even `--allow-rc` continues to select the latest stable release.
+
+RC builds require Git, included in `deps --install`. They fetch just the requested tag and its source tree over HTTPS, without the full kernel history. The tag signature, trusted fingerprint, and signed tag name are checked before creating a local TAR archive. The commit, tag object, and archive hash are recorded in the build manifest. See [source provenance](provenance.md#upstream-sources).
+
+Add `--prepare-only` to stop after verification and configuration; a subsequent build starts a new run. RCs can introduce build or driver incompatibilities. Keep an official Fedora kernel available for booting back into. Installation and boot selection use the same commands and checks as stable builds.
+
 ## Install
 
 Copy the exact installation command printed after a successful build:

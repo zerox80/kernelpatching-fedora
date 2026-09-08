@@ -3,14 +3,18 @@ from __future__ import annotations
 import urllib.request
 
 from kernelpatching.constants import VERSION_RE
+from kernelpatching.constants import RC_VERSION_RE
 from kernelpatching.errors import Error
 import json
 
 
-def validate_version(version: str) -> str:
-    if not VERSION_RE.fullmatch(version):
-        raise Error("Use a stable kernel version such as 7.2.4; release candidates and paths are not accepted.")
-    if tuple(map(int, version.split(".")[:2])) < (6, 12):
+def validate_version(version: str, *, allow_rc: bool = False) -> str:
+    is_rc = bool(RC_VERSION_RE.fullmatch(version))
+    if not VERSION_RE.fullmatch(version) and not is_rc:
+        raise Error("Use a kernel version such as 7.2.4 or 7.3-rc2; paths and other suffixes are not accepted.")
+    if is_rc and not allow_rc:
+        raise Error("Release candidates require explicit opt-in: build --version " + version + " --allow-rc")
+    if tuple(map(int, version.partition("-rc")[0].split(".")[:2])) < (6, 12):
         raise Error("Kernel 6.12 or newer is required.")
     return version
 

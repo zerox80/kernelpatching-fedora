@@ -1,6 +1,6 @@
 # Fedora Vanilla Kernel
 
-Build a stable upstream Linux kernel using an official Fedora configuration, verify its source signature, package it as RPMs, and manage installed kernel versions.
+Build an upstream Linux kernel using an official Fedora configuration, verify its source signature, package it as RPMs, and manage installed kernel versions. Stable releases are the default; mainline release candidates require explicit opt-in.
 
 The project uses Python's standard library at runtime. Its code, CLI messages, documentation, and filenames are in English. Keep the entire project folder together: the root Python file is a launcher for the modules in `kernelpatching/`.
 
@@ -16,6 +16,8 @@ python3 fedora_vanilla_kernel.py build
 
 Each `build` automatically selects the **latest stable kernel from kernel.org**. You only need `--version` when deliberately choosing a specific version. There is no background updater: run `build` again when you want another kernel.
 
+To build a specific mainline release candidate, use `python3 fedora_vanilla_kernel.py build --version 7.3-rc2 --allow-rc`. RC sources come from a verified signed Git tag. `--allow-rc` alone still selects latest stable. See [RC builds](docs/usage.md#mainline-release-candidates) for details.
+
 Do not run the whole application with sudo. Builds run as your regular user; explicitly requested package changes use sudo and DNF, and boot-default changes use sudo and grubby. A successful build prints its exact installation command. Nothing reboots automatically.
 
 ## Commands
@@ -27,6 +29,7 @@ Do not run the whole application with sudo. Builds run as your regular user; exp
 | `deps --install` | Install build dependencies through DNF |
 | `build` | Download verified sources, configure, and build local RPMs |
 | `build --prepare-only` | Stop after source verification and configuration |
+| `build --version VERSION --allow-rc` | Build an explicitly selected mainline release candidate |
 | `install BUILD_DIRECTORY` | Install a completed build after validation |
 | `kernels` | List installed Fedora and custom kernel versions |
 | `set-default` | Choose the default boot kernel by number |

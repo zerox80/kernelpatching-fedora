@@ -7,6 +7,7 @@ from kernelpatching.errors import Error
 from kernelpatching.network.downloads import download
 from kernelpatching.system.console import say
 from kernelpatching.system.process import run
+from contextlib import contextmanager
 from pathlib import Path
 import lzma
 import subprocess
@@ -35,6 +36,28 @@ def signature_fingerprint(status: str, returncode: int, keys: dict[str, str] | N
 
 
 
+@contextmanager
+def release_keyring(directory: Path, keys: dict[str, str]):
+    """Refresh release keys in a disposable keyring shared by TAR and Git verification."""
+    with tempfile.TemporaryDirectory(prefix="gnupg-", dir=directory) as tmp:
+        keyring = Path(tmp)
+        keyring.chmod(0o700)
+        # git verify-tag invokes GPG itself and uses this isolated configuration.
+        (keyring / "gpg.conf").write_text("batch\nno-tty\nno-auto-key-retrieve\n", encoding="ascii")
+        gpg = ["gpg", "--no-options", "--homedir", keyring, "--batch", "--no-tty"]
+        for email in sorted(set(keys.values())):
+            say(f"Refreshing release keys through kernel.org WKD: {email}")
+            try:
+                result = run([*gpg, "--auto-key-locate", "clear,wkd",
+                              "--locate-external-keys", email], check=False, timeout=60)
+            except subprocess.TimeoutExpired:
+                say(f"  WKD request timed out for {email}; signature verification is still required.")
+                continue
+            with (directory / "signature.log").open("a", encoding="utf-8") as log:
+                log.write(result.stdout + result.stderr)
+        yield keyring
+
+
 def verified_tarball(version: str, directory: Path, keys: dict[str, str] | None = None) -> tuple[Path, str]:
     keys = RELEASE_KEYS if keys is None else keys
     prefix = f"https://cdn.kernel.org/pub/linux/kernel/v{version.split('.')[0]}.x/linux-{version}"
@@ -52,20 +75,8 @@ def verified_tarball(version: str, directory: Path, keys: dict[str, str] | None 
             if size > 8 * GIB:
                 raise Error("The decompressed archive is unexpectedly large.")
             target.write(chunk)
-    with tempfile.TemporaryDirectory(prefix="gnupg-", dir=directory) as tmp:
-        keyring = Path(tmp)
-        keyring.chmod(0o700)
+    with release_keyring(directory, keys) as keyring:
         gpg = ["gpg", "--no-options", "--homedir", keyring, "--batch", "--no-tty"]
-        for email in sorted(set(keys.values())):
-            say(f"Refreshing release keys through kernel.org WKD: {email}")
-            try:
-                result = run([*gpg, "--auto-key-locate", "clear,wkd",
-                              "--locate-external-keys", email], check=False, timeout=60)
-            except subprocess.TimeoutExpired:
-                say(f"  WKD request timed out for {email}; signature verification is still required.")
-                continue
-            with (directory / "signature.log").open("a", encoding="utf-8") as log:
-                log.write(result.stdout + result.stderr)
         verified = run([*gpg, "--no-auto-key-retrieve", "--status-fd", "1", "--verify",
                         signature, tarpath], check=False, timeout=180)
         (directory / "signature.status").write_text(verified.stdout, encoding="utf-8")

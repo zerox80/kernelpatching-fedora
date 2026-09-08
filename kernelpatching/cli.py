@@ -80,7 +80,9 @@ def parser() -> argparse.ArgumentParser:
         if action == "deps":
             p.add_argument("--install", action="store_true", help="Install dependencies with sudo dnf")
         if action == "build":
-            p.add_argument("--version", help="Specific stable version; defaults to the latest stable release from kernel.org")
+            p.add_argument("--version", help="Specific upstream version (RCs require --allow-rc); defaults to the latest stable release from kernel.org")
+            p.add_argument("--allow-rc", action="store_true",
+                           help="Allow an explicit --version such as 7.3-rc2; without --version, still build latest stable")
             p.add_argument("--jobs", type=positive, help="Parallel jobs; the default accounts for RAM and CPUs")
             p.add_argument("--min-free-gib", type=positive, default=50, help="Required free space before building; default: 50 GiB")
             p.add_argument("--refresh-base", action="store_true", help="Refresh the saved baseline from an installed official package")
