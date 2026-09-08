@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fedora-vanilla-kernel"
+version = "2.1.0"
+description = "Verified upstream kernel builds using Fedora configurations and explicit RPM lifecycle management"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+kernelpatching = "kernelpatching.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["kernelpatching*"]
