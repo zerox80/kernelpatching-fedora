@@ -15,13 +15,15 @@ import unittest
 from unittest.mock import patch
 
 from kernelpatching import cli
-from kernelpatching.constants import GIB, RELEASE_KEYS
+from kernelpatching.constants import GIB, PACKAGE_NAME, RELEASE_KEYS
 from kernelpatching.errors import Error
 from kernelpatching.kernel import releases
 from kernelpatching.kernel.sources import extract_sources
 from kernelpatching.models import Baseline
 from kernelpatching.operations import build as build_operation
+from kernelpatching.operations import inventory
 from kernelpatching.security import git_sources, signatures
+from kernelpatching.storage.manifests import validate_target
 from kernelpatching.system import process
 from support import patch_symbol
 
@@ -109,6 +111,7 @@ class RCBuildWorkflowTests(unittest.TestCase):
         packages.assert_called_once()
         self.assertEqual(manifest["status"], "built")
         self.assertEqual(manifest["upstream_version"], "7.3-rc2")
+        self.assertRegex(manifest["kernel_release"], r"^7\.3\.0-rc2\.vanilla\.fc44\.[0-9]+$")
         self.assertTrue(manifest["release_candidate"])
         self.assertEqual(manifest["upstream_source_url"], git_sources.UPSTREAM_GIT_URL)
         self.assertEqual(manifest["source_verification"], "signed-git-tag")
@@ -132,6 +135,36 @@ class RCBuildWorkflowTests(unittest.TestCase):
                 self.assertFalse(manifest["release_candidate"])
                 self.assertEqual(manifest["source_verification"], "detached-tar-signature")
                 self.assertEqual(manifest["upstream_source_url"], "https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.2.4.tar.xz")
+
+
+class RCLifecycleTests(unittest.TestCase):
+    RELEASE = "7.3.0-rc2.vanilla.fc44.123456"
+
+    def setUp(self):
+        self.enterContext(patch_symbol("fedora_version", return_value=44))
+        self.enterContext(patch.object(inventory.platform, "machine", return_value="x86_64"))
+
+    def test_rc_manifest_target_accepts_local_release_and_rejects_wrong_fedora(self):
+        manifest = {"schema": 2, "target": {"fedora_version": 44, "architecture": "x86_64"},
+                    "kernel_release": self.RELEASE}
+        validate_target(manifest)
+        manifest["target"]["fedora_version"] = 45
+        with self.assertRaisesRegex(Error, "kernel release"):
+            validate_target(manifest)
+
+    def test_inventory_keeps_rc_main_and_devel_packages_together(self):
+        version = self.RELEASE.replace("-", "_")
+        lines, expected = [], []
+        for name in (PACKAGE_NAME, PACKAGE_NAME + "-devel"):
+            nevra = f"{name}-{version}-1.fc44.x86_64"
+            capability = "kernel-devel" if name.endswith("-devel") else "kernel"
+            lines.append(f"{name}|{version}|1.fc44|x86_64|{nevra}|{capability}-uname-r={self.RELEASE};")
+            expected.append(nevra)
+        with patch.object(inventory, "run", return_value=types.SimpleNamespace(stdout="\n".join(lines))):
+            entry, = inventory.kernel_inventory()
+        self.assertEqual(entry["release"], self.RELEASE)
+        self.assertEqual(entry["packages"], sorted(expected))
+        self.assertEqual(entry["image"], f"/boot/vmlinuz-{self.RELEASE}")
 
 
 @unittest.skipUnless(shutil.which("git") and shutil.which("gpg"), "Git and GPG are required")

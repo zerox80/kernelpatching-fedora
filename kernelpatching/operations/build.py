@@ -60,7 +60,9 @@ def build(args, work: Path) -> None:
         (directory / "fedora-original.config").write_bytes(config)
         (work / "fedora-base.config").write_bytes(config)
         write_json(work / "baseline.json", dataclasses.asdict(base))
-        suffix = f"-vanilla.fc{fedora_version()}.{timestamp}"
+        # RCs already have a hyphen in EXTRAVERSION. RPM's versioned Provides
+        # allow only one, so join the local suffix with a dot for RC builds.
+        suffix = f"{'.' if is_rc else '-'}vanilla.fc{fedora_version()}.{timestamp}"
         jobs = args.jobs or job_count()
         say(f"Kernel: {version}\nFedora baseline: {base.release}\nBuild: {directory}\n"
             f"Parallel jobs: {jobs}\nSecure Boot: {secure_boot()}")

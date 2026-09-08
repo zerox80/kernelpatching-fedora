@@ -37,7 +37,7 @@ def configure(tree: Path, directory: Path, config: bytes, suffix: str, jobs: int
                "--set-str", "SYSTEM_TRUSTED_KEYS", "",
                "--set-str", "SYSTEM_REVOCATION_KEYS", "",
                "--set-str", "MODULE_SIG_KEY", "certs/signing_key.pem",
-               "--set-str", "BUILD_SALT", suffix.lstrip("-")]
+               "--set-str", "BUILD_SALT", suffix.lstrip("-.")]
     run([tree / "scripts/config", "--file", config_file, *changes], cwd=tree)
     (directory / "fedora-adapted.config").write_bytes(config_file.read_bytes())
     logged([*make, "listnewconfig"], tree, directory / "new-options.log")

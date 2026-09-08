@@ -84,9 +84,12 @@ class CommandTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             spec = Path(tmp) / "kernel.spec"
             spec.write_text(adapt_rpm_spec(SPEC_FIXTURE.read_text()))
-            result = subprocess.run(["rpmspec", "--parse", "--define", "with_devel 1",
-                                     "--define", "KERNELRELEASE 7.2.4-vanilla.fc44.123456", str(spec)],
-                                    text=True, capture_output=True, timeout=10)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("Name: kernel-vanilla-local", result.stdout)
-            self.assertIn("Provides: kernel-devel-uname-r", result.stdout)
+            for release in ("7.2.4-vanilla.fc44.123456", "7.3.0-rc2.vanilla.fc44.123456"):
+                with self.subTest(release=release):
+                    result = subprocess.run(["rpmspec", "--parse", "--define", "with_devel 1",
+                                             "--define", f"KERNELRELEASE {release}", str(spec)],
+                                            text=True, capture_output=True, timeout=10)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn("Name: kernel-vanilla-local", result.stdout)
+                    self.assertIn(f"Provides: kernel-uname-r = {release}", result.stdout)
+                    self.assertIn(f"Provides: kernel-devel-uname-r = {release}", result.stdout)

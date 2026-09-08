@@ -37,7 +37,7 @@ def kernel_inventory() -> list[dict]:
             family = {"kernel", "kernel-core", "kernel-modules", "kernel-modules-core",
                       "kernel-modules-extra", "kernel-devel", "kernel-devel-matched"}
             kind = "Fedora kernel-core"
-        elif package["name"] == PACKAGE_NAME and re.search(r"-vanilla\.fc[0-9]+\.[0-9]+$", release):
+        elif package["name"] == PACKAGE_NAME and re.search(r"-(?:rc[1-9][0-9]*\.)?vanilla\.fc[0-9]+\.[0-9]+$", release):
             family, kind = {PACKAGE_NAME, PACKAGE_NAME + "-devel"}, "custom vanilla kernel"
         elif package["name"] == "kernel" and re.search(r"-vanilla44\.[0-9]+$", release):
             family, kind = {"kernel", "kernel-devel"}, "custom vanilla kernel (legacy v1)"

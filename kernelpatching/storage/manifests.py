@@ -26,7 +26,7 @@ def validate_target(manifest: dict) -> None:
         target = manifest.get("target")
         if not isinstance(target, dict) or not isinstance(target.get("fedora_version"), int):
             raise Error("The build manifest does not specify a Fedora target.")
-        marker = rf"-vanilla\.fc{target['fedora_version']}\.[0-9]+$"
+        marker = rf"-(?:rc[1-9][0-9]*\.)?vanilla\.fc{target['fedora_version']}\.[0-9]+$"
         if not re.search(marker, release):
             raise Error("The kernel release does not match the Fedora target.")
     else:

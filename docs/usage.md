@@ -40,6 +40,8 @@ The version is an example; choose an existing upstream `MAJOR.MINOR-rcN` tag wit
 
 RC builds require Git, included in `deps --install`. They fetch just the requested tag and its source tree over HTTPS, without the full kernel history. The tag signature, trusted fingerprint, and signed tag name are checked before creating a local TAR archive. The commit, tag object, and archive hash are recorded in the build manifest. See [source provenance](provenance.md#upstream-sources).
 
+An RC kernel release looks like `7.3.0-rc2.vanilla.fc44.TIMESTAMP`. The local suffix is joined with a dot because RPM versioned dependencies accept only one hyphen. Final releases retain their `-vanilla.fc44.TIMESTAMP` suffix. The upstream source version and tag are unchanged.
+
 Add `--prepare-only` to stop after verification and configuration; a subsequent build starts a new run. RCs can introduce build or driver incompatibilities. Keep an official Fedora kernel available for booting back into. Installation and boot selection use the same commands and checks as stable builds.
 
 ## Install
