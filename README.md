@@ -16,7 +16,7 @@ python3 fedora_vanilla_kernel.py build
 
 Each `build` automatically selects the **latest stable kernel from kernel.org**. You only need `--version` when deliberately choosing a specific version. There is no background updater: run `build` again when you want another kernel.
 
-Do not run the whole application with sudo. Builds run as your regular user; explicitly requested package changes use sudo and DNF. A successful build prints its exact installation command. Nothing reboots automatically.
+Do not run the whole application with sudo. Builds run as your regular user; explicitly requested package changes use sudo and DNF, and boot-default changes use sudo and grubby. A successful build prints its exact installation command. Nothing reboots automatically.
 
 ## Commands
 
@@ -29,6 +29,10 @@ Do not run the whole application with sudo. Builds run as your regular user; exp
 | `build --prepare-only` | Stop after source verification and configuration |
 | `install BUILD_DIRECTORY` | Install a completed build after validation |
 | `kernels` | List installed Fedora and custom kernel versions |
+| `set-default` | Choose the default boot kernel by number |
+| `set-default KERNEL_RELEASE` | Set an installed kernel as the boot default by exact release |
+| `set-default --dry-run` | Choose a kernel by number and preview the boot-default change |
+| `set-default KERNEL_RELEASE --dry-run` | Preview a boot-default change for an exact release |
 | `remove --dry-run` | Choose a kernel by number and preview its component packages |
 | `remove` | Choose a kernel by number, then review DNF's removal confirmation |
 | `remove KERNEL_RELEASE --dry-run` | Preview the packages belonging to one selected kernel |
@@ -36,6 +40,8 @@ Do not run the whole application with sudo. Builds run as your regular user; exp
 | `offline-status` | Inspect pending offline updates without changing them |
 
 All commands provide `--help`. You can also use `python3 -m kernelpatching` from this directory.
+
+Use `set-default` to choose which installed kernel boots by default at the next restart. Enter a number, or press Enter/type `q` to cancel. It does not reboot or rebuild the kernel. See [boot selection and recovery](docs/kernel-lifecycle.md#boot-default-and-recovery) for validation and recovery behavior.
 
 ## Requirements and limits
 
@@ -69,4 +75,4 @@ Run `python3 fedora_vanilla_kernel.py remove` to open the numbered menu. Enter o
 python3 scripts/check.py
 ```
 
-No tests perform a real kernel installation, removal, or reboot. The implementation includes a compatibility launcher, dedicated modules, local fixtures, and regression tests. Full kernel builds and boot tests are still required before claiming support for a particular hardware and Fedora combination.
+No tests perform a real kernel installation, removal, bootloader change, or reboot. The implementation includes a compatibility launcher, dedicated modules, local fixtures, and regression tests. Full kernel builds and boot tests are still required before claiming support for a particular hardware and Fedora combination.

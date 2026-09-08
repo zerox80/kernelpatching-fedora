@@ -47,6 +47,18 @@ class SelectionTests(unittest.TestCase):
             with self.assertRaisesRegex(Error, "interactive terminal"):
                 self.choose(["2"])
 
+    def test_default_selection_allows_running_and_current_default_kernels(self):
+        for number, expected in (("1", CURRENT), ("3", DEFAULT)):
+            with self.subTest(number=number), patch("builtins.input", return_value=number):
+                self.assertEqual(selection.select_kernel(ENTRIES, CURRENT,
+                    f"/boot/vmlinuz-{DEFAULT}", action="set-default"), expected)
+        self.assertNotIn("protected", self.output.getvalue())
+
+    def test_noninteractive_default_selection_names_the_correct_command(self):
+        with patch.object(selection.sys.stdin, "isatty", return_value=False):
+            with self.assertRaisesRegex(Error, "set-default KERNEL_RELEASE"):
+                selection.select_kernel(ENTRIES, CURRENT, action="set-default")
+
     def test_empty_or_fully_protected_inventory_never_prompts(self):
         with patch("builtins.input") as prompt:
             self.assertIsNone(selection.select_kernel([], CURRENT))

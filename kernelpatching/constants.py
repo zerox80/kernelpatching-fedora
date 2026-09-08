@@ -5,7 +5,7 @@ Release key source: https://www.kernel.org/signature.html
 from __future__ import annotations
 import re
 
-SCRIPT_VERSION = "2.1.0"
+SCRIPT_VERSION = "2.2.0"
 
 
 MIN_FEDORA = 44

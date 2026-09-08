@@ -5,6 +5,7 @@
   python3 fedora_vanilla_kernel.py build
   python3 fedora_vanilla_kernel.py install /absolute/path/to/build
   python3 fedora_vanilla_kernel.py kernels
+  python3 fedora_vanilla_kernel.py set-default
   python3 fedora_vanilla_kernel.py remove
   python3 fedora_vanilla_kernel.py remove KERNEL_RELEASE --dry-run
 
@@ -21,6 +22,7 @@ from kernelpatching.constants import SCRIPT_VERSION
 from kernelpatching.errors import Error
 from kernelpatching.kernel.baseline import choose_baseline
 from kernelpatching.operations.build import build
+from kernelpatching.operations.boot_default import set_boot_default
 from kernelpatching.operations.install import install
 from kernelpatching.operations.inventory import list_kernels
 from kernelpatching.operations.removal import remove_kernel
@@ -90,6 +92,9 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--make-default", action="store_true", help="Select the new GRUB default after successful installation")
     sub.add_parser("offline-status", help="Inspect prepared offline updates without changing them")
     sub.add_parser("kernels", help="List installed Fedora and custom kernels")
+    p = sub.add_parser("set-default", help="Choose the installed kernel to boot by default")
+    p.add_argument("release", nargs="?", help="Exact kernel release; omit to choose from a numbered menu")
+    p.add_argument("--dry-run", action="store_true", help="Preview the default change without applying it")
     p = sub.add_parser("remove", help="Remove one explicitly selected installed kernel")
     p.add_argument("release", nargs="?", help="Exact kernel release; omit to choose from a numbered menu")
     p.add_argument("--dry-run", action="store_true", help="Preview selected packages without removing anything")
@@ -107,6 +112,9 @@ def main(argv=None) -> int:
             return 0
         if args.command == "kernels":
             list_kernels()
+            return 0
+        if args.command == "set-default":
+            set_boot_default(args)
             return 0
         if args.command == "remove":
             remove_kernel(args)

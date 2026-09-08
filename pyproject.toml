@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fedora-vanilla-kernel"
-version = "2.1.0"
+version = "2.2.0"
 description = "Verified upstream kernel builds using Fedora configurations and explicit RPM lifecycle management"
 readme = "README.md"
 requires-python = ">=3.12"

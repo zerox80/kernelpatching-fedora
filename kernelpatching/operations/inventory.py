@@ -53,7 +53,7 @@ def kernel_inventory() -> list[dict]:
 
 
 def read_boot_default() -> str:
-    """Read an unprivileged display hint; removal validates it again with sudo."""
+    """Read an unprivileged display hint; boot changes validate it again with sudo."""
     default = ""
     if shutil.which("grubby"):
         result = run(["grubby", "--default-kernel"], check=False)
@@ -77,4 +77,5 @@ def list_kernels() -> None:
         suffix = " [" + ", ".join(marks) + "]" if marks else ""
         say(f"{entry['release']} — {entry['kind']}{suffix}")
     say("Choose a kernel by number: remove (preview with: remove --dry-run)\n"
-        "An exact release is also accepted: remove KERNEL_RELEASE")
+        "An exact release is also accepted: remove KERNEL_RELEASE\n"
+        "Choose the default boot kernel: set-default (preview with: set-default --dry-run)")

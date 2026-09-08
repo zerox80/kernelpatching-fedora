@@ -45,6 +45,25 @@ python3 fedora_vanilla_kernel.py install /absolute/path/to/build --make-default
 
 No automatic reboot is performed. External modules such as NVIDIA or VirtualBox may require a separate rebuild before testing the new kernel.
 
+## Change the boot default
+
+```bash
+python3 fedora_vanilla_kernel.py set-default
+python3 fedora_vanilla_kernel.py set-default --dry-run
+python3 fedora_vanilla_kernel.py set-default KERNEL_RELEASE
+python3 fedora_vanilla_kernel.py set-default KERNEL_RELEASE --dry-run
+```
+
+Omit the release to choose an installed kernel from a numbered menu. Enter a number, or press Enter/type `q` to cancel. Both the running kernel and the current boot default are selectable. Selecting the existing default makes no change.
+
+For an explicit command, replace `KERNEL_RELEASE` with an exact value from `kernels`. Scripts without an interactive terminal must supply the exact release. `--dry-run` previews the change without modifying boot configuration.
+
+The application checks the installed kernel, kernel image, initramfs, and GRUB entry before setting the default with `sudo grubby --set-default`. It reads back the result to verify the change and attempts to restore the previous default if the change fails. Sudo may also be needed for boot-entry inspection.
+
+Selecting a custom kernel requires Secure Boot to be disabled, matching the installation policy. Official Fedora kernels remain selectable with Secure Boot enabled.
+
+This chooses the default for a future boot; the currently running kernel stays active until you reboot. The command does not reboot, install or remove packages, or rebuild a kernel. Normal Fedora kernel updates or release upgrades may change the default again later. You can still use `install --make-default` to select a newly built kernel during its installation.
+
 ## Inspect and remove
 
 ```bash

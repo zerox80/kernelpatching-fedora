@@ -17,7 +17,7 @@ kernelpatching-fedora/
     kernel/                Releases, source extraction, baselines and configuration
     packaging/             RPM recipe adaptation, building and validation
     storage/               File hashes and build manifests
-    operations/            Build, install, inventory, numbered selection and removal
+    operations/            Build, install, inventory, numbered selection, boot default and removal
   docs/
   examples/
   scripts/
@@ -25,7 +25,7 @@ kernelpatching-fedora/
     fixtures/
 ```
 
-Package-changing workflows are explicitly selected CLI commands. Builds do not escalate privileges. Offline-update checks, provenance checks, and removal protections must remain active when adding features.
+Package-changing and boot-default workflows are explicitly selected CLI commands. Builds do not escalate privileges. Offline-update checks, provenance checks, and removal protections must remain active when adding features. Boot-default changes validate installed boot artifacts, verify grubby's result, and attempt to restore the previous default on failure. Their numbered selector allows the running kernel and current default; removal retains its separate protections.
 
 ## Local checks
 

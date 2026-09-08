@@ -17,4 +17,6 @@ Run `python3 scripts/check.py` for syntax checks and the regression suite. The t
 
 Mocked workflow tests do not install or remove packages, cancel offline updates, change the bootloader, or reboot. Future Fedora version tests validate the selection logic only; they are not full builds on those releases.
 
+When testing `set-default`, mock the installed-kernel inventory, boot artifacts, and grubby commands. Exercise selection, cancellation, previews, an already-selected default, validation failures, and restoration after a failed change without writing to the host's boot configuration.
+
 The host's Fedora configuration and installed kernel list have been inspected read-only, and RPM recipe parsing has been checked with `rpmspec`. No full kernel compilation, live package installation/removal, hardware test, or boot test is implied by passing this suite.
