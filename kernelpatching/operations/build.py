@@ -7,7 +7,7 @@ from kernelpatching.constants import RC_VERSION_RE
 from kernelpatching.constants import SCRIPT_VERSION
 from kernelpatching.errors import Error
 from kernelpatching.kernel.baseline import choose_baseline
-from kernelpatching.kernel.configuration import configure
+from kernelpatching.kernel.configuration import configure, config_values
 from kernelpatching.kernel.releases import latest_version
 from kernelpatching.kernel.releases import validate_version
 from kernelpatching.kernel.sources import extract_sources
@@ -24,6 +24,7 @@ from kernelpatching.system.dependencies import dependencies
 from kernelpatching.system.host import fedora_version
 from kernelpatching.system.host import job_count
 from kernelpatching.system.rpm import missing_packages
+from kernelpatching.system.rust import fedora_rust_toolchain
 from pathlib import Path
 import dataclasses
 import datetime as dt
@@ -50,6 +51,10 @@ def build(args, work: Path) -> None:
         if missing:
             raise Error("Missing build dependencies: " + ", ".join(missing)
                         + "\nRun the deps --install subcommand first.")
+        rust_toolchain = None
+        if config_values(config.decode()).get("CONFIG_RUST") == "y":
+            rust_toolchain = fedora_rust_toolchain()
+            say(rust_toolchain.summary())
         if shutil.disk_usage(work).free < args.min_free_gib * GIB:
             raise Error(f"Less than {args.min_free_gib} GiB is available in the build directory.")
         version = version or latest_version()
@@ -82,6 +87,8 @@ def build(args, work: Path) -> None:
                                       "min_free_gib": args.min_free_gib,
                                       "refresh_base": args.refresh_base},
                     "created_utc": dt.datetime.now(dt.timezone.utc).isoformat()}
+        if rust_toolchain is not None:
+            manifest["rust_toolchain"] = dataclasses.asdict(rust_toolchain)
         write_json(directory / "manifest.json", manifest)
         (directory / "PROVENANCE.txt").write_text(
             f"Application version: {SCRIPT_VERSION}\nTarget: Fedora {fedora_version()} / {platform.machine()}\n"
@@ -109,7 +116,7 @@ def build(args, work: Path) -> None:
         manifest.update({"signer": signer, "source_tar_sha256": sha256(archive)})
         write_json(directory / "manifest.json", manifest)
         tree = extract_sources(archive, directory / "sources", version)
-        release, make = configure(tree, directory, config, suffix, jobs)
+        release, make = configure(tree, directory, config, suffix, jobs, rust_toolchain=rust_toolchain)
         manifest.update({"kernel_release": release, "config_sha256": sha256(tree / ".config")})
         if args.prepare_only:
             manifest["status"] = "prepared"

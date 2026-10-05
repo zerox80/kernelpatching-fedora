@@ -8,6 +8,16 @@ Run `python3 fedora_vanilla_kernel.py offline-status`. A `download-complete` tra
 
 Run `deps --install` as a regular user. The command can bootstrap GPG without first loading a baseline. If an upstream release introduces new BuildRequires, inspect the generated RPM spec and `build.log`; additional distribution packages may be needed. No verification step is skipped automatically.
 
+## Rustup installed alongside Fedora Rust
+
+Kernel builds explicitly use `/usr/bin/rustc`, `/usr/bin/rustdoc`, and `/usr/bin/bindgen` from the Fedora dependency packages. A Rustup installation earlier in `PATH` does not replace them. The Rust library source path is derived from that compiler's sysroot and pinned for configuration and RPM packaging, together with the host Rust compiler.
+
+For Rust-enabled Fedora configurations, `check` verifies these tools and the readable `core` sources. `build` performs the same checks before fetching kernel sources and records the selected toolchain in `manifest.json`. Missing tools or sources stop early with a dependency-repair message. Use `deps --install` for missing packages; if installed package files are damaged, repair the Fedora packages named in the error.
+
+Older application versions could report missing `core/src/lib.rs` under `~/.rustup` even when Fedora's `rust-src` package was installed. Update the application and retry; no Rustup component installation is needed for the Fedora build workflow. A retry creates a new build directory.
+
+The verified kernel's `make rustavailable` check still runs before configuration to validate that release's Rust/bindgen/libclang requirements. Passing the initial dependency checks does not guarantee compatibility with every future kernel release.
+
 ## No matching official Fedora kernel
 
 A new baseline needs an installed official `kernel-core` for the current Fedora release. An old Fedora configuration is not silently reused after an OS upgrade. Install or repair the appropriate official packages through your normal Fedora package management, then retry.

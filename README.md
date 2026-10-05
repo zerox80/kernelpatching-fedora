@@ -74,6 +74,8 @@ Fedora versions and distribution signing keys are detected dynamically. There is
 
 Builds require at least 50 GiB free by default. More than 100 GiB of headroom can be useful with Fedora's broad configuration; this is a planning estimate, not an upper bound. Builds may take hours. CPU parallelism is limited using available CPU and RAM information.
 
+Rust-enabled builds use Fedora's Rust compiler, library sources, and bindgen explicitly, even when Rustup is installed. `check` and `build` verify this toolchain; missing Rust sources are detected before the kernel download. See [Rust troubleshooting](docs/troubleshooting.md#rustup-installed-alongside-fedora-rust).
+
 ## Kernel removal means one version
 
 Fedora splits a kernel into several packages. Removing `kernel`, `kernel-core`, `kernel-devel`, and several `kernel-modules*` packages **with the same version** removes that one kernel and its components. It does not mean removing every installed kernel.

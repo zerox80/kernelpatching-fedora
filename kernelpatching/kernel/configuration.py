@@ -7,6 +7,7 @@ from kernelpatching.storage.files import write_json
 from kernelpatching.system.console import say
 from kernelpatching.system.process import logged
 from kernelpatching.system.process import run
+from kernelpatching.system.rust import RustToolchain, fedora_rust_toolchain
 from pathlib import Path
 import difflib
 import re
@@ -25,13 +26,16 @@ def config_values(text: str) -> dict[str, str]:
 
 
 
-def configure(tree: Path, directory: Path, config: bytes, suffix: str, jobs: int) -> tuple[str, list[str]]:
+def configure(tree: Path, directory: Path, config: bytes, suffix: str, jobs: int, *,
+              rust_toolchain: RustToolchain | None = None) -> tuple[str, list[str]]:
     config_file = tree / ".config"
     config_file.write_bytes(config)
     (directory / "fedora-original.config").write_bytes(config)
     make = ["make", f"-j{jobs}", "CC=gcc", "HOSTCC=gcc", "KBUILD_BUILD_VERSION=1"]
     old = config_values(config.decode())
     if old.get("CONFIG_RUST") == "y":
+        rust_toolchain = rust_toolchain or fedora_rust_toolchain()
+        make.extend(rust_toolchain.make_arguments())
         logged([*make, "rustavailable"], tree, directory / "configure.log")
     changes = ["--set-str", "LOCALVERSION", suffix, "--disable", "LOCALVERSION_AUTO",
                "--set-str", "SYSTEM_TRUSTED_KEYS", "",

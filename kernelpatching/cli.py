@@ -21,6 +21,7 @@ from kernelpatching.constants import RUST_PACKAGES
 from kernelpatching.constants import SCRIPT_VERSION
 from kernelpatching.errors import Error
 from kernelpatching.kernel.baseline import choose_baseline
+from kernelpatching.kernel.configuration import config_values
 from kernelpatching.operations.build import build
 from kernelpatching.operations.boot_default import set_boot_default
 from kernelpatching.operations.install import install
@@ -38,6 +39,7 @@ from kernelpatching.system.host import host_check
 from kernelpatching.system.host import job_count
 from kernelpatching.system.process import privileged
 from kernelpatching.system.rpm import missing_packages
+from kernelpatching.system.rust import fedora_rust_toolchain
 from pathlib import Path
 import argparse
 import lzma
@@ -169,6 +171,8 @@ def main(argv=None) -> int:
         say("Missing build packages: " + (", ".join(missing) if missing else "none"))
         if missing:
             say("Next step: " + shlex.join([*cli_command(), "deps", "--install"]))
+        elif config_values(config.decode()).get("CONFIG_RUST") == "y":
+            say(fedora_rust_toolchain().summary())
         return 1 if missing else 0
     except KeyboardInterrupt:
         say("\nCancelled. Build files and logs were retained; no reboot was requested.")

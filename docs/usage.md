@@ -44,6 +44,8 @@ python3 fedora_vanilla_kernel.py build
 
 On a minimal system without GPG, start with `deps --install`. `deps` alone only prints the command. `check` exits with status 1 if a prerequisite is missing.
 
+If the baseline enables Rust, both `check` and `build` verify Fedora's `/usr/bin/rustc`, `/usr/bin/rustdoc`, `/usr/bin/bindgen`, and the compiler's `core` sources. The build pins these tools and sources through configuration and RPM packaging; Rustup tools in `PATH` do not override them. The selected Rust toolchain is printed and recorded in the build manifest. Kernel-specific compatibility is then checked with `make rustavailable` after source verification.
+
 The default workspace is `$XDG_STATE_HOME/fedora-vanilla-kernel/fedora-VERSION-ARCHITECTURE`, or `~/.local/state/fedora-vanilla-kernel/fedora-VERSION-ARCHITECTURE` when `XDG_STATE_HOME` is not set. `check` prints the actual absolute path.
 
 ```bash

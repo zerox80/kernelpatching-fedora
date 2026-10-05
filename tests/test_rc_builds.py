@@ -57,10 +57,17 @@ class RCVersionTests(unittest.TestCase):
 
 
 class RCBuildWorkflowTests(unittest.TestCase):
-    def simulate(self, options):
+    def simulate(self, options, *, rust_enabled=False):
         temporary = self.enterContext(tempfile.TemporaryDirectory())
         work = Path(temporary)
         config = b"CONFIG_MODULES=y\n"
+        toolchain = None
+        if rust_enabled:
+            from kernelpatching.system.rust import RustToolchain
+            config += b"CONFIG_RUST=y\n"
+            toolchain = RustToolchain("/usr/bin/rustc", "/usr/bin/rustdoc", "/usr/bin/bindgen",
+                                      "/usr/lib/rustlib/src/rust/library", "1.98.1", "0.72.1")
+        self.enterContext(patch.object(build_operation, "fedora_rust_toolchain", return_value=toolchain))
         baseline = Baseline("7.2.4-200.fc44.x86_64", "official", "x86_64", "/config",
                             hashlib.sha256(config).hexdigest(), "sig", 44, "kernel.src.rpm")
         self.enterContext(contextlib.redirect_stdout(io.StringIO()))
@@ -93,7 +100,8 @@ class RCBuildWorkflowTests(unittest.TestCase):
         rc = self.enterContext(patch.object(build_operation, "verified_git_archive",
                                             side_effect=lambda *a: (*archive(*a), git_metadata)))
 
-        def configure(tree, directory, config, suffix, jobs):
+        def configure(tree, directory, config, suffix, jobs, *, rust_toolchain=None):
+            self.assertIs(rust_toolchain, toolchain)
             (tree / ".config").write_bytes(config)
             return ("7.3.0-rc2" if "--version" in options else "7.2.4") + suffix, ["make"]
 
@@ -125,6 +133,11 @@ class RCBuildWorkflowTests(unittest.TestCase):
         stable.assert_not_called()
         rc.assert_called_once()
         packages.assert_not_called()
+
+    def test_checked_rust_toolchain_reaches_configuration_and_manifest(self):
+        manifest, _, _, _, _ = self.simulate(["--version", "7.3-rc2", "--allow-rc"], rust_enabled=True)
+        self.assertEqual(manifest["rust_toolchain"]["rustc"], "/usr/bin/rustc")
+        self.assertEqual(manifest["rust_toolchain"]["library"], "/usr/lib/rustlib/src/rust/library")
 
     def test_no_version_remains_latest_stable_with_or_without_opt_in(self):
         for flags in ([], ["--allow-rc"]):
