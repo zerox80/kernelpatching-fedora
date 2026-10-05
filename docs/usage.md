@@ -2,6 +2,38 @@
 
 Run commands from the project directory, or pass an absolute path to `fedora_vanilla_kernel.py`. Copy the whole project when sharing it; the launcher needs the `kernelpatching` package next to it.
 
+## Interactive menu and profiles
+
+Run `python3 fedora_vanilla_kernel.py` without arguments, or add `menu`, to choose an action by number. The build action offers four presets:
+
+| Profile | Settings |
+| --- | --- |
+| `stable` | Latest stable version, automatic CPU/RAM-based job count, build RPMs |
+| `low-load` | Latest stable version, one compiler job, build RPMs |
+| `prepare` | Latest stable version, automatic jobs, stop after configuration |
+| `rc` | RC opt-in enabled, explicit version required, automatic jobs, build RPMs |
+
+All profiles use the Fedora configuration baseline and default to requiring 50 GiB free. `low-load` reduces compiler concurrency; it does not impose CPU or RAM limits or change kernel tuning.
+
+After selecting a profile, edit any displayed setting by number. Entries 6–8 toggle baseline refresh, preparation only, and RC opt-in. Enter keeps a value while editing; `-` resets it to the preset default. Enter at a selection menu or `q` cancels. Only `s` starts the configured build. The equivalent command is printed for reuse. Edits apply to the current run and are not saved as personal profiles.
+
+The menu also exposes checks, dependency installation, completed-build installation, installed kernels, boot selection, removal, and offline-update status. Existing validation and DNF confirmation still apply. Installation from the menu keeps the existing boot default.
+
+For scripts or repeat runs:
+
+```bash
+python3 fedora_vanilla_kernel.py profiles
+python3 fedora_vanilla_kernel.py build --profile low-load
+python3 fedora_vanilla_kernel.py build --profile low-load --jobs 2
+python3 fedora_vanilla_kernel.py build --profile prepare
+python3 fedora_vanilla_kernel.py build --profile rc --version 7.3-rc2
+python3 fedora_vanilla_kernel.py build --profile rc --version 7.3-rc2 --prepare-only
+```
+
+Explicit options override profile defaults regardless of argument order. Use `--no-prepare-only` or `--no-allow-rc` to turn off a preset switch. Version numbers are examples. The `rc` profile requires a version and does not automatically discover the latest RC. Ordinary `build --allow-rc` without a version continues to select latest stable.
+
+Without an interactive terminal, no arguments print help, and `menu` reports that a terminal is required. `profiles` works without a terminal or a supported Fedora host. Build records include the selected preset and effective workflow options.
+
 ## Build
 
 ```bash

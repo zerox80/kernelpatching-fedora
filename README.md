@@ -9,12 +9,29 @@ The project uses Python's standard library at runtime. Its code, CLI messages, d
 Open a terminal in this project folder:
 
 ```bash
+python3 fedora_vanilla_kernel.py
+```
+
+This opens a numbered action menu. Choose **Build a kernel**, pick a profile, and edit the displayed settings by number. Enter `s` to start or `q` to cancel. You can also open it explicitly with `menu`.
+
+| Build profile | Defaults |
+| --- | --- |
+| `stable` | Latest stable kernel, automatic CPU/RAM-based parallelism |
+| `low-load` | Latest stable kernel, one compiler job |
+| `prepare` | Verify sources and prepare configuration without compiling RPMs |
+| `rc` | Allow release candidates; choose an explicit version in the menu |
+
+Version, jobs, workspace, free-space requirement, Fedora baseline, and preparation/RC switches are editable before starting. These are build workflow presets using the Fedora configuration baseline. The menu prints the equivalent command for reuse; edits apply to that run.
+
+For direct commands:
+
+```bash
 python3 fedora_vanilla_kernel.py check
 python3 fedora_vanilla_kernel.py deps --install
 python3 fedora_vanilla_kernel.py build
 ```
 
-Each `build` automatically selects the **latest stable kernel from kernel.org**. You only need `--version` when deliberately choosing a specific version. There is no background updater: run `build` again when you want another kernel.
+By default, `build` automatically selects the **latest stable kernel from kernel.org**. You only need `--version` when deliberately choosing a specific version or using the `rc` profile. There is no background updater: run `build` again when you want another kernel.
 
 To build a specific mainline release candidate, use `python3 fedora_vanilla_kernel.py build --version 7.3-rc2 --allow-rc`. RC sources come from a verified signed Git tag. `--allow-rc` alone still selects latest stable. See [RC builds](docs/usage.md#mainline-release-candidates) for details.
 
@@ -24,6 +41,9 @@ Do not run the whole application with sudo. Builds run as your regular user; exp
 
 | Command | Purpose |
 | --- | --- |
+| No arguments / `menu` | Choose an action and customize a build profile interactively |
+| `profiles` | Show built-in profiles and examples |
+| `build --profile NAME` | Use a preset; explicit options override its defaults |
 | `check` | Inspect the host, configuration baseline, and build dependencies |
 | `deps` | Print the dependency installation command |
 | `deps --install` | Install build dependencies through DNF |

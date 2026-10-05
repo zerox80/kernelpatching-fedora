@@ -26,6 +26,8 @@ from kernelpatching.operations.boot_default import set_boot_default
 from kernelpatching.operations.install import install
 from kernelpatching.operations.inventory import list_kernels
 from kernelpatching.operations.removal import remove_kernel
+from kernelpatching.profiles import PROFILES, apply_profile, show_profiles
+from kernelpatching.menu import main_menu
 from kernelpatching.system.boot import secure_boot
 from kernelpatching.system.console import cli_command
 from kernelpatching.system.console import say
@@ -69,7 +71,9 @@ def release_key_arg(text: str) -> tuple[str, str]:
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     result.add_argument("--version", action="version", version=f"%(prog)s {SCRIPT_VERSION}")
-    sub = result.add_subparsers(dest="command", required=True)
+    sub = result.add_subparsers(dest="command")
+    sub.add_parser("menu", help="Choose an action and customize a build profile interactively")
+    sub.add_parser("profiles", help="Show the built-in build profiles and examples")
     for action, help_text in (("check", "Check the system, baseline configuration, and dependencies"),
                               ("deps", "Print the DNF command for build dependencies"),
                               ("build", "Download signed sources, configure the kernel, and build RPMs")):
@@ -80,13 +84,16 @@ def parser() -> argparse.ArgumentParser:
         if action == "deps":
             p.add_argument("--install", action="store_true", help="Install dependencies with sudo dnf")
         if action == "build":
+            p.add_argument("--profile", choices=PROFILES, default="stable",
+                           help="Build preset; explicit options override its defaults (default: stable)")
             p.add_argument("--version", help="Specific upstream version (RCs require --allow-rc); defaults to the latest stable release from kernel.org")
-            p.add_argument("--allow-rc", action="store_true",
+            p.add_argument("--allow-rc", action=argparse.BooleanOptionalAction, default=None,
                            help="Allow an explicit --version such as 7.3-rc2; without --version, still build latest stable")
             p.add_argument("--jobs", type=positive, help="Parallel jobs; the default accounts for RAM and CPUs")
             p.add_argument("--min-free-gib", type=positive, default=50, help="Required free space before building; default: 50 GiB")
             p.add_argument("--refresh-base", action="store_true", help="Refresh the saved baseline from an installed official package")
-            p.add_argument("--prepare-only", action="store_true", help="Stop after configuration without building the kernel")
+            p.add_argument("--prepare-only", action=argparse.BooleanOptionalAction, default=None,
+                           help="Stop after configuration without building the kernel")
             p.add_argument("--release-key", type=release_key_arg, action="append", metavar="FINGERPRINT=EMAIL",
                            help="Trust an additional release key; verify the full fingerprint against an official source first")
     p = sub.add_parser("install", help="Install RPMs from a completed build using sudo/DNF")
@@ -105,8 +112,23 @@ def parser() -> argparse.ArgumentParser:
 
 
 def main(argv=None) -> int:
-    args = parser().parse_args(argv)
+    argument_parser = parser()
+    args = argument_parser.parse_args(argv)
     try:
+        if args.command is None and not sys.stdin.isatty():
+            argument_parser.print_help()
+            return 0
+        if args.command in {None, "menu"}:
+            args = main_menu(argument_parser)
+            if args is None:
+                return 0
+        if args.command == "profiles":
+            show_profiles()
+            return 0
+        if args.command == "build":
+            apply_profile(args)
+            if args.profile == "rc" and not args.version:
+                raise Error("The rc profile needs an explicit --version, for example 7.3-rc2.")
         host_check()
         if args.command == "offline-status":
             pending = pending_offline_updates()

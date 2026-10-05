@@ -76,6 +76,11 @@ def build(args, work: Path) -> None:
                     "fedora_source_patches_applied": False,
                     "trusted_release_keys": keys,
                     "baseline": dataclasses.asdict(base), "jobs": jobs,
+                    "build_profile": getattr(args, "profile", "stable"),
+                    "build_options": {"prepare_only": args.prepare_only,
+                                      "allow_rc": args.allow_rc,
+                                      "min_free_gib": args.min_free_gib,
+                                      "refresh_base": args.refresh_base},
                     "created_utc": dt.datetime.now(dt.timezone.utc).isoformat()}
         write_json(directory / "manifest.json", manifest)
         (directory / "PROVENANCE.txt").write_text(

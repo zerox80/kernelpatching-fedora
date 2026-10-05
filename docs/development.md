@@ -8,6 +8,8 @@ kernelpatching-fedora/
   pyproject.toml
   kernelpatching/
     cli.py                 Argument parsing and command dispatch
+    menu.py                Interactive action menu and build settings editor
+    profiles.py            Built-in build workflow presets
     constants.py           Defaults and trusted release fingerprints
     errors.py              User-facing exception type
     models.py              Baseline metadata model
